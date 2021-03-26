@@ -17,3 +17,8 @@ Build apk的话，记得修改 app/build.gradle 里的 *signingConfigs*，改为
 
 ## 下载
 见 [Release](https://github.com/wuzeyou/flomoEx/releases) 页。
+
+## Thanks to
+[flomo](https://flomoapp.com/)
+
+[MaterialEditText](https://github.com/rengwuxian/MaterialEditText)
