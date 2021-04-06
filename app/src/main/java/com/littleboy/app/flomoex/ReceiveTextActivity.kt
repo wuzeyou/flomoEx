@@ -9,6 +9,7 @@ import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
+import com.littleboy.app.flomoex.dialog.PostSuccessDialog
 import com.littleboy.app.flomoex.network.FlomoRepository
 import com.littleboy.app.flomoex.network.FlomoService
 import okhttp3.OkHttpClient
@@ -21,10 +22,13 @@ class ReceiveTextActivity: AppCompatActivity() {
     private lateinit var loading: ImageView
     private lateinit var viewModel: ReceiveTextViewModel
 
+    private var sendText: String? = null
+
     companion object {
         val BASE_URL = "https://flomoapp.com"
         private const val TIME_OUT = 60
-        private const val URL_PREFIX = "https://flomoapp.com/"
+        const val URL_PREFIX = "https://flomoapp.com/"
+        const val QUICK_CLIPBOARD_ACTION = "flomoex.action.quick.clipboard"
     }
 
     private val client: OkHttpClient
@@ -44,13 +48,6 @@ class ReceiveTextActivity: AppCompatActivity() {
         loading = findViewById(R.id.loading_view)
         startRotateView(loading)
 
-        val savedUrl = prefs.apiUrl
-        if (!savedUrl.startsWith(URL_PREFIX)) {
-            Toast.makeText(this, "未保存有效的API", Toast.LENGTH_SHORT).show()
-            finish()
-        }
-        val validPath = savedUrl.removePrefix(URL_PREFIX)
-
         val service = Retrofit.Builder()
             .addConverterFactory(GsonConverterFactory.create())
             .client(client)
@@ -59,22 +56,38 @@ class ReceiveTextActivity: AppCompatActivity() {
         val repository = FlomoRepository(service)
         viewModel = ViewModelProvider(this, ViewModelFactory(repository)).get(ReceiveTextViewModel::class.java)
 
-        if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
-            handleSendText(intent, validPath)
+        window.decorView.post {
+            handleSendText(intent)
         }
 
         viewModel.apply {
             uiState.observe(this@ReceiveTextActivity, {
-                Toast.makeText(this@ReceiveTextActivity, it.showMsg, Toast.LENGTH_SHORT).show()
-                finish()
+                val dialog = sendText?.let { it1 -> PostSuccessDialog.newInstance(it1) }
+                dialog?.show(supportFragmentManager, null)
             })
         }
     }
 
-    private fun handleSendText(intent: Intent, path: String) {
-        val sendTxt = intent.getStringExtra(Intent.EXTRA_TEXT)
-        sendTxt?.let {
-            viewModel.postContent(path, sendTxt)
+    private fun handleSendText(intent: Intent?) {
+        val savedUrl = prefs.apiUrl
+        if (!savedUrl.startsWith(URL_PREFIX)) {
+            Toast.makeText(this, "未保存有效的API", Toast.LENGTH_SHORT).show()
+            finish()
+            return
+        }
+        val validPath = savedUrl.removePrefix(URL_PREFIX)
+        if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
+            // from share sheet
+            sendText = intent.getStringExtra(Intent.EXTRA_TEXT)
+        } else if (intent?.action == QUICK_CLIPBOARD_ACTION) {
+            val clipboardHelper = ClipboardHelper.getInstance(context = this)
+            sendText = clipboardHelper.getClipText()
+        }
+        if (sendText != null) {
+            viewModel.postContent(validPath, sendText!!)
+        } else {
+            Toast.makeText(this, "请先复制一段文字后再发送", Toast.LENGTH_SHORT).show()
+            finish()
         }
     }
 

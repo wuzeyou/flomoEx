@@ -12,4 +12,8 @@
         <item name="android:windowBackground">#66000000</item>
         <item name="android:windowIsTranslucent">true</item>
     </style>
+
+    <style name="base_dialog" parent="@style/Theme.MaterialComponents.Dialog">
+        <item name="android:windowBackground">@color/fe_transparent</item>
+    </style>
 </resources>
